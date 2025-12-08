@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode"
 	"strconv"
-	"sort"
 )
 
 func readFile(name string) (string, error) {
@@ -20,48 +19,13 @@ func readFile(name string) (string, error) {
     return str, nil
 }
 
-func readNextNum(reader *bufio.Reader) int {
-	numStr := "";
-	firstRune := rune(0);
+func readOperations(reader *bufio.Reader) []rune {
 
-	for {
-		someRune, _, _ := reader.ReadRune();
-		firstRune = someRune;
-		if !unicode.IsDigit(someRune) {
-			continue;
-		} else {
-			break;
-		}
-	}
-
-	
-	numStr += string(firstRune);
-
-	for {
-		someRune, _, _ := reader.ReadRune();
-		if unicode.IsDigit(someRune) {
-			numStr += string(someRune);
-		} else {
-			reader.UnreadRune();
-			break;
-		}
-	}
-
-	num, err := strconv.Atoi(numStr);
-	if err != nil {
-		panic(err);
-	}
-
-	return num;
-}
-
-func readOperations(reader *bufio.Reader) []string {
-
-	output := []string{}
+	output := []rune{}
 	for {
 		someRune, _, err := reader.ReadRune();
 		if (someRune == '+') || (someRune == '*') {
-			output = append(output, string(someRune))
+			output = append(output, someRune)
 		} else if err == io.EOF {
 			return output;
 		} else {
@@ -70,58 +34,62 @@ func readOperations(reader *bufio.Reader) []string {
 	}
 }
 
-func getCephalopodNum(nums []string) []int {
 
-}
+func getCephalopodNums(problemInputMatrix [][]rune) [][]int {
 
-func getCorrectNumsForProblems(problemInputMatrix [][]string) [][]int {
 	output := [][]int{};
+
 	cols := len(problemInputMatrix[0]);
 	rows := len(problemInputMatrix);
-	for i := 0; i < cols; i++ {
-		nums := []string{}
-		for j := 0; j < rows; j++ {
-			nums = append(nums, problemInputMatrix[j][i]);
-		}
-		sort.Slice(nums, func(i, j int) bool {
-			lenA := len(nums[i])
-			lenB := len(nums[j])
 
-			if lenA != lenB {
-				return lenA < lenB
+	currCol := []int{}
+
+	for i := 0; i < cols; i++ {
+
+		num := "";
+		for j := 0; j < rows; j++ {
+			curr := problemInputMatrix[j][i];
+			if unicode.IsDigit(curr) {
+				num += string(curr)
 			}
-			return nums[i] < nums[j]
-		})
-		fmt.Println(nums);
-		res := getCephalopodNum(nums);
-		fmt.Println(res);
+		}
+
+		if num == "" {
+			output = append(output, currCol);
+			currCol = []int{};
+		} else {
+			numInt, _ := strconv.Atoi(num);
+			currCol = append(currCol, numInt);
+		}
+
 	}
 
-	return output;
+	return append(output, currCol);
 }
 
-func finishMathProblems(problemMatrix [][]int, problemOperations []string) []int {
+func finishMathProblems(problemMatrix [][]int, problemOperations []rune) []int {
 
-	N := len(problemMatrix);
-	problems := len(problemMatrix[0]);
+	problems := len(problemOperations);
+	output := []int{};
 
-	output := []int{}
 	for i := 0; i < problems; i++ {
-		if problemOperations[i] == "*" {
-			output = append(output, 1);
-		} else {
-			output = append(output, 0);
+		nums := problemMatrix[i];
+		operation := problemOperations[i]
+		
+		total := 1;
+		if operation == '+' {
+			total = 0;
 		}
-	}
 
-	for i := 0; i < N; i++ {
-		for j := 0; j < problems; j++ {
-			if problemOperations[j] == "*" {
-				output[j] *= problemMatrix[i][j];
+		for j := 0; j < len(nums); j++ {
+			if operation == '*' {
+				total *= nums[j];
 			} else {
-				output[j] += problemMatrix[i][j];
+				total += nums[j];
 			}
 		}
+
+		output = append(output, total);
 	}
 
 	return output;
@@ -129,34 +97,39 @@ func finishMathProblems(problemMatrix [][]int, problemOperations []string) []int
 
 func main() {
 
-	fileStr, _ := readFile("question6.testinput");
+	fileStr, _ := readFile("question6.input");
 	reader := bufio.NewReader(strings.NewReader(fileStr));
 
-	problemInputMatrix := [][]string{};
-	problemOperations := []string{};
-	newProblemLine := []string{};
+
+	problemInputMatrix := [][]rune{};
+	problemOperations := []rune{};
+	newProblemLine := []rune{};
 
 	for {
+
 		someRune, _, err := reader.ReadRune();
-		if unicode.IsDigit(someRune) {
-			reader.UnreadRune();
-			num := readNextNum(reader);
-			numStr := strconv.Itoa(num);
-			newProblemLine = append(newProblemLine, numStr);
+		if unicode.IsDigit(someRune) || someRune == ' ' {
+
+			newProblemLine = append(newProblemLine, someRune);
+
 		} else if someRune == '\n' {
+
 			problemInputMatrix = append(problemInputMatrix, newProblemLine);
-			newProblemLine = []string{};
+			newProblemLine = []rune{};
+
 		} else if (someRune == '+') || (someRune == '*') {
-			problemOperations = append(problemOperations, string(someRune))
+
+			problemOperations = append(problemOperations, someRune)
 			problemOperations = append(problemOperations, readOperations(reader)...);
+
 		} else if err == io.EOF {
 			break;
 		}
 	}
 
-	problemInputMatrixInt := getCorrectNumsForProblems(problemInputMatrix);
+	fixedMatrix := getCephalopodNums(problemInputMatrix);
 
-	solutions := finishMathProblems(problemInputMatrixInt, problemOperations);
+	solutions := finishMathProblems(fixedMatrix, problemOperations);
 	total := 0
 	for i := 0; i < len(solutions); i++ {
 		total += solutions[i];
